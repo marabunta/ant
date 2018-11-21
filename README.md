@@ -1,2 +1,1 @@
-# client
-(🐜) marabunta client
+# 🐜  marabunta client
