@@ -1,0 +1,8 @@
+# ant configuration file
+---
+marabunta_http_port: 8000
+marabunta_grpc_port: 1415
+tls:
+  crt: certs/server.crt
+  key: certs/server.key
+  ca: certs/CA.crt

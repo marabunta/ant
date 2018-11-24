@@ -1,4 +1,4 @@
-package client
+package ant
 
 import (
 	"context"
@@ -22,13 +22,17 @@ type Client struct {
 }
 
 // New create ant
-func New(id, host string, port int) (*Client, error) {
+func New(c *Config) (*Client, error) {
 	// TODO create client metadata
 	md := metadata.Pairs(
-		"ant", id,
+		"ant", "foo",
 	)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	return &Client{ctx: ctx}, nil
+}
+
+func (c *Client) Start() error {
+	return nil
 }
 
 // Run ant
