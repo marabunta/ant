@@ -2,8 +2,8 @@ package ant
 
 // Config yaml/command line configuration
 type Config struct {
-	HTTPPort int `yaml:"http_port"`
-	GRPCPort int `yaml:"grpc_port"`
+	HTTPPort int `yaml:"marabunta_http_port"`
+	GRPCPort int `yaml:"marabunta_grpc_port"`
 	TLS      `yaml:"tls"`
 }
 

@@ -5,6 +5,8 @@ type Flags struct {
 	Configfile string
 	GRPC       int
 	HTTP       int
+	Home       string
+	ID         string
 	TLSCA      string
 	TLSCrt     string
 	TLSKey     string

@@ -18,6 +18,8 @@ type Parse struct {
 func (p *Parse) Parse(fs *flag.FlagSet) (*Flags, error) {
 	fs.BoolVar(&p.Flags.Version, "v", false, "Print version")
 	fs.StringVar(&p.Flags.Configfile, "c", "", "`ant.yml` configuration file")
+	fs.StringVar(&p.Flags.ID, "id", "", "optional `ID` to be used instead of an UUID")
+	fs.StringVar(&p.Flags.Home, "home", "", "path to `directory` to store the configuration (default $HOME/.marabunta)")
 	fs.IntVar(&p.Flags.GRPC, "grpc", 1415, "marabunta gRPC `port` (default 1415)")
 	fs.IntVar(&p.Flags.HTTP, "http", 8000, "marabunta HTTP `port` (default 8000)")
 	fs.StringVar(&p.Flags.TLSCA, "tls.ca", "", "Path to TLS Certificate Authority (`CA`)")
@@ -85,6 +87,21 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		return nil, nil
 	}
 
+	// if true, create a certificate and ask marabunta server to sign it
+	var needCertificate bool
+
+	home := flags.Home
+	if home == "" {
+		// if no home path defined use $HOME/.marabunta
+		home, err = GetUserSdir()
+		if err != nil {
+			return nil, err
+		}
+		if err := os.MkdirAll(home, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
+
 	// if -c
 	if flags.Configfile != "" {
 		if !isFile(flags.Configfile) {
@@ -103,7 +120,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, fmt.Errorf("cannot read TLS CA file: %q, use (\"%s -h\") for help", cfg.TLS.CA, os.Args[0])
 			}
 		} else {
-			return nil, fmt.Errorf("missing TLS CA, use (\"%s -h\") for help", os.Args[0])
+			needCertificate = true
 		}
 
 		// TLS certificate
@@ -112,7 +129,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, fmt.Errorf("cannot read TLS crt file: %q, use (\"%s -h\") for help", cfg.TLS.Crt, os.Args[0])
 			}
 		} else {
-			return nil, fmt.Errorf("missing TLS certificate, use (\"%s -h\") for help", os.Args[0])
+			needCertificate = true
 		}
 
 		// TLS KEY
@@ -121,13 +138,22 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, fmt.Errorf("cannot read TLS Key file: %q, use (\"%s -h\") for help", cfg.TLS.Key, os.Args[0])
 			}
 		} else {
-			return nil, fmt.Errorf("missing TLS Key, use (\"%s -h\") for help", os.Args[0])
+			needCertificate = true
+		}
+
+		if needCertificate {
+			err := createCertificate(home)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		return cfg, nil
 	}
 
 	if fs.NFlag() < 1 {
+		// TODO
+		// check how to deal with the needCertificate and createCertificate to avoid duplicating code
 		return nil, fmt.Errorf("missing options, use (\"%s -h\") for help", os.Args[0])
 	}
 
@@ -151,7 +177,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		}
 		tls.CA = flags.TLSCA
 	} else {
-		return nil, fmt.Errorf("missing TLS CA, use (\"%s -h\") for help", os.Args[0])
+		needCertificate = true
 	}
 
 	// TLS certificate
@@ -161,7 +187,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		}
 		tls.Crt = flags.TLSCrt
 	} else {
-		return nil, fmt.Errorf("missing TLS certificate, use (\"%s -h\") for help", os.Args[0])
+		needCertificate = true
 	}
 
 	// TLS KEY
@@ -171,7 +197,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		}
 		tls.Key = flags.TLSKey
 	} else {
-		return nil, fmt.Errorf("missing TLS Key, use (\"%s -h\") for help", os.Args[0])
+		needCertificate = true
 	}
 
 	cfg.TLS = tls

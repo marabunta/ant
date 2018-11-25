@@ -1,7 +1,10 @@
 package ant
 
 import (
+	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 )
 
 // isDir return true if path is a dir
@@ -26,4 +29,17 @@ func isFile(path string) bool {
 		return true
 	}
 	return false
+}
+
+// GetUserSdir returns the $HOME/.marabunta
+func GetUserSdir() (string, error) {
+	home := os.Getenv("HOME")
+	if home == "" {
+		usr, err := user.Current()
+		if err != nil {
+			return "", fmt.Errorf("error getting user home: %s", err)
+		}
+		home = usr.HomeDir
+	}
+	return filepath.Join(home, ".marabunta"), nil
 }
