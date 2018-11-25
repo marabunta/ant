@@ -1,0 +1,24 @@
+---
+version: 2
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test-latest
+      - test-1.11
+jobs:
+  test-latest: &test-template
+    docker:
+      - image: circleci/golang:latest
+    working_directory: /go/src/github.com/marabunta/ant
+    steps:
+      - checkout
+      - run: export GO111MODULE=on
+      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: make certs
+      - run: go get ./...
+      - run: go test -race -v
+  test-1.11:
+    <<: *test-template
+    docker:
+      - image: circleci/golang:1.11
