@@ -7,6 +7,7 @@ type Flags struct {
 	HTTP       int
 	Home       string
 	ID         string
+	Start      bool
 	TLSCA      string
 	TLSCrt     string
 	TLSKey     string

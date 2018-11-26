@@ -17,6 +17,7 @@ type Parse struct {
 // Parse parse the command line flags
 func (p *Parse) Parse(fs *flag.FlagSet) (*Flags, error) {
 	fs.BoolVar(&p.Flags.Version, "v", false, "Print version")
+	fs.BoolVar(&p.Flags.Start, "start", false, "Start client")
 	fs.StringVar(&p.Flags.Configfile, "c", "", "`ant.yml` configuration file")
 	fs.StringVar(&p.Flags.ID, "id", "", "optional `ID` to be used instead of an UUID")
 	fs.StringVar(&p.Flags.Home, "home", "", "path to `directory` to store the configuration (default $HOME/.marabunta)")

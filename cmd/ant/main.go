@@ -28,11 +28,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	a, err := ant.New(cfg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	if (fs.Lookup("start")).Value.(flag.Getter).Get().(bool) {
+		a, err := ant.New(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		log.Fatal(a.Start())
 	}
-
-	log.Fatal(a.Start())
 }
