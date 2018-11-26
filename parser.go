@@ -19,13 +19,7 @@ func (p *Parse) Parse(fs *flag.FlagSet) (*Flags, error) {
 	fs.BoolVar(&p.Flags.Version, "v", false, "Print version")
 	fs.BoolVar(&p.Flags.Start, "start", false, "Start client")
 	fs.StringVar(&p.Flags.Configfile, "c", "", "`ant.yml` configuration file")
-	fs.StringVar(&p.Flags.ID, "id", "", "optional `ID` to be used instead of an UUID")
-	fs.StringVar(&p.Flags.Home, "home", "", "path to `directory` to store the configuration (default $HOME/.marabunta)")
-	fs.IntVar(&p.Flags.GRPC, "grpc", 1415, "marabunta gRPC `port` (default 1415)")
-	fs.IntVar(&p.Flags.HTTP, "http", 8000, "marabunta HTTP `port` (default 8000)")
-	fs.StringVar(&p.Flags.TLSCA, "tls.ca", "", "Path to TLS Certificate Authority (`CA`)")
-	fs.StringVar(&p.Flags.TLSCrt, "tls.crt", "", "Path to TLS `certificate`")
-	fs.StringVar(&p.Flags.TLSKey, "tls.key", "", "Path to TLS `private key`")
+	fs.StringVar(&p.Flags.S3, "s3", "", "`access:secret` keys if empty it will use environment variables ANT_S3_ACCESS_KEY and ANT_S3_SECRET_KEY, <command>")
 
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
@@ -89,19 +83,10 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 	}
 
 	// if true, create a certificate and ask marabunta server to sign it
-	var needCertificate bool
-
-	home := flags.Home
-	if home == "" {
-		// if no home path defined use $HOME/.marabunta
-		home, err = GetUserSdir()
-		if err != nil {
-			return nil, err
-		}
-		if err := os.MkdirAll(home, os.ModePerm); err != nil {
-			return nil, err
-		}
-	}
+	var (
+		home            string
+		needCertificate bool
+	)
 
 	// if -c
 	if flags.Configfile != "" {
@@ -113,6 +98,15 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		cfg, err := p.parseYml(flags.Configfile)
 		if err != nil {
 			return nil, err
+		}
+
+		// Home
+		if cfg.Home == "" {
+			home, err := GetHome()
+			if err != nil {
+				return nil, err
+			}
+			cfg.Home = home
 		}
 
 		// TLS CA
@@ -152,56 +146,22 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		return cfg, nil
 	}
 
-	if fs.NFlag() < 1 {
-		// TODO
-		// check how to deal with the needCertificate and createCertificate to avoid duplicating code
-		return nil, fmt.Errorf("missing options, use (\"%s -h\") for help", os.Args[0])
+	// Use defaults
+	cfg := &Config{
+		HTTPPort: 8000,
+		GRPCPort: 1415,
 	}
 
-	// create new cfg if not using -c
-	cfg := new(Config)
-
-	if flags.GRPC != 0 {
-		cfg.GRPCPort = flags.GRPC
+	home, err = GetHome()
+	if err != nil {
+		return nil, err
 	}
 
-	if flags.HTTP != 0 {
-		cfg.HTTPPort = flags.HTTP
+	cfg.Home = home
+
+	if err := createCertificate(home); err != nil {
+		return nil, err
 	}
-
-	tls := TLS{}
-
-	// TLS CA
-	if flags.TLSCA != "" {
-		if !isFile(flags.TLSCA) {
-			return nil, fmt.Errorf("cannot read file: %q, use (\"%s -h\") for help", flags.TLSCA, os.Args[0])
-		}
-		tls.CA = flags.TLSCA
-	} else {
-		needCertificate = true
-	}
-
-	// TLS certificate
-	if flags.TLSCrt != "" {
-		if !isFile(flags.TLSCrt) {
-			return nil, fmt.Errorf("cannot read file: %q, use (\"%s -h\") for help", flags.TLSCrt, os.Args[0])
-		}
-		tls.Crt = flags.TLSCrt
-	} else {
-		needCertificate = true
-	}
-
-	// TLS KEY
-	if flags.TLSKey != "" {
-		if !isFile(flags.TLSKey) {
-			return nil, fmt.Errorf("cannot read file: %q, use (\"%s -h\") for help", flags.TLSKey, os.Args[0])
-		}
-		tls.Key = flags.TLSKey
-	} else {
-		needCertificate = true
-	}
-
-	cfg.TLS = tls
 
 	return cfg, nil
 }

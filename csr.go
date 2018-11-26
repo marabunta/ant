@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-
-	"github.com/satori/go.uuid"
 )
 
 func createCertificate(home string) error {
@@ -21,20 +19,13 @@ func createCertificate(home string) error {
 		panic(err)
 	}
 
-	// create UUID1
-	uuid1, err := uuid.NewV1()
-	if err != nil {
-		return fmt.Errorf("could not create UUID, %s", err)
-	}
-
-	// save UUID1 in ant.id
-	err = ioutil.WriteFile(filepath.Join(home, "ant.id"), []byte(uuid1.String()), 0644)
+	id, err := GetID(filepath.Join(home, "ant.id"))
 	if err != nil {
 		return err
 	}
 
 	subj := pkix.Name{
-		CommonName:         uuid1.String(),
+		CommonName:         id,
 		Country:            []string{"-"},
 		Province:           []string{"-"},
 		Locality:           []string{"-"},

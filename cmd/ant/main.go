@@ -35,5 +35,8 @@ func main() {
 			os.Exit(1)
 		}
 		log.Fatal(a.Start())
+	} else {
+		fmt.Fprintf(os.Stderr, "To start use option -start, use (\"%s -h\") for help\n", os.Args[0])
+		os.Exit(1)
 	}
 }

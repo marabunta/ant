@@ -46,11 +46,6 @@ func TestParseDefault(t *testing.T) {
 		t.Error("help called for regular flag")
 	}
 	expect(t, "", flags.Configfile)
-	expect(t, "", flags.TLSCA)
-	expect(t, "", flags.TLSCrt)
-	expect(t, "", flags.TLSKey)
-	expect(t, int(1415), flags.GRPC)
-	expect(t, int(8000), flags.HTTP)
 	expect(t, false, flags.Version)
 }
 
@@ -64,11 +59,6 @@ func TestParseFlags(t *testing.T) {
 	}{
 		{[]string{"cmd", "-v"}, "Version", true},
 		{[]string{"cmd", "-c", "marabunta.yml"}, "Configfile", "marabunta.yml"},
-		{[]string{"cmd", "-grpc", "1415"}, "gRPC", "1415"},
-		{[]string{"cmd", "-http", "8000"}, "http", "8000"},
-		{[]string{"cmd", "-tls.ca", "/path/to/ca"}, "tls.ca", "/path/to/child"},
-		{[]string{"cmd", "-tls.crt", "/path/to/crt"}, "tls.crt", "/path/to/crt"},
-		{[]string{"cmd", "-tls.key", "/path/to/key"}, "tls.key", "/path/to/key"},
 	}
 
 	var helpCalled = false
@@ -153,7 +143,7 @@ func TestParseArgsNoargs(t *testing.T) {
 	if helpCalled {
 		t.Error("help called for regular flag")
 	}
-	if err == nil {
+	if err != nil {
 		t.Error("Expecting error")
 	}
 }
@@ -169,8 +159,6 @@ func TestParseArgsTable(t *testing.T) {
 		{[]string{"cmd", "-c", "ant.yml"}, true},
 		// need certs (make certs) not nice needs to be fixed
 		{[]string{"cmd", "-c", "example/ant.yml", "cmd"}, false},
-		{[]string{"cmd", "-tls.ca", "/path/to/ca"}, true},
-		// TODO
 	}
 	var helpCalled = false
 	for _, f := range flagTest {
@@ -206,8 +194,7 @@ http_port: 8000
 grpc_port: 1415
 tls:
   crt: certs/server.crt
-  key: certs/server.key
-  ca: certs/CA.crt`)
+  key: certs/server.key`)
 	err = ioutil.WriteFile(tmpfile.Name(), yaml, 0644)
 	if err != nil {
 		t.Error(err)
