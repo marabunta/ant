@@ -1,15 +1,20 @@
 package ant
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"path/filepath"
 )
 
@@ -48,6 +53,14 @@ func createCertificate(home string) error {
 		return fmt.Errorf("could not create CSR, %s", err)
 	}
 
+	x509Encoded, _ := x509.MarshalECPrivateKey(key)
+	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509Encoded})
+
+	err = ioutil.WriteFile(filepath.Join(home, "ant.key"), pemEncoded, 0600)
+	if err != nil {
+		return err
+	}
+
 	csr := pem.EncodeToMemory(&pem.Block{
 		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
 	})
@@ -57,14 +70,32 @@ func createCertificate(home string) error {
 		return err
 	}
 
-	x509Encoded, _ := x509.MarshalECPrivateKey(key)
-	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509Encoded})
-
-	err = ioutil.WriteFile(filepath.Join(home, "ant.key"), pemEncoded, 0600)
+	// REQUEST HTTP to marabunta the sign the cert
+	req, err := http.NewRequest("POST", "https://httpbin.org/post", bytes.NewBuffer(csr))
+	req.Header.Set("User-Agent", fmt.Sprintf("ant-%s", id))
 	if err != nil {
 		return err
 	}
-
-	// TODO REQUEST HTTP to marabunta the sign the cert
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	fmt.Printf("res = %+v\n", res)
+	if res.StatusCode == 200 {
+		crt, err := os.Create(filepath.Join(home, "ant.crt"))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(crt, res.Body)
+		if err != nil {
+			return err
+		}
+	}
+	// TODO
 	return nil
 }
