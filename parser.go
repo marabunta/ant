@@ -28,20 +28,15 @@ func (p *Parse) Parse(fs *flag.FlagSet) (*Flags, error) {
 	return &p.Flags, nil
 }
 
-func (p *Parse) parseYml(file string) (*Config, error) {
+func (p *Parse) parseYml(file string, cfg *Config) (*Config, error) {
 	f, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	// set defaults
-	var cfg = Config{
-		HTTPPort: 8000,
-		GRPCPort: 1415,
-	}
 	if err := yaml.Unmarshal(f, &cfg); err != nil {
 		return nil, fmt.Errorf("unable to parse YAML file %q %s", file, err)
 	}
-	return &cfg, nil
+	return cfg, nil
 }
 
 // Usage prints to standard error a usage message
@@ -86,6 +81,11 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 	var (
 		home            string
 		needCertificate bool
+		cfg             = &Config{
+			Marabunta: "marabunta.host",
+			HTTPPort:  8000,
+			GRPCPort:  1415,
+		}
 	)
 
 	// if -c
@@ -95,7 +95,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		}
 
 		// parse the `run.yml` file
-		cfg, err := p.parseYml(flags.Configfile)
+		cfg, err := p.parseYml(flags.Configfile, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -137,19 +137,13 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 		}
 
 		if needCertificate {
-			err := createCertificate(home)
+			err := createCertificate(cfg)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		return cfg, nil
-	}
-
-	// Use defaults
-	cfg := &Config{
-		HTTPPort: 8000,
-		GRPCPort: 1415,
 	}
 
 	home, err = GetHome()
@@ -159,7 +153,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 
 	cfg.Home = home
 
-	if err := createCertificate(home); err != nil {
+	if err := createCertificate(cfg); err != nil {
 		return nil, err
 	}
 

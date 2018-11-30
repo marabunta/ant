@@ -2,11 +2,16 @@ package ant
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
+	"time"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -74,4 +79,47 @@ func GetHome() (string, error) {
 		return "", err
 	}
 	return home, nil
+}
+
+func RequestCertificate(url, home, id string, data []byte) error {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("User-Agent", fmt.Sprintf("ant-%s", id))
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	client := &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: tr,
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == 200 {
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		block, _ := pem.Decode(b)
+		if block == nil {
+			return fmt.Errorf("failed to parse certificate PEM")
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse certificate: %v", err.Error())
+		}
+		fmt.Printf("cert = %s\n", cert)
+		// TODO
+	}
+	return fmt.Errorf("error while requesting the certificate: %v", res.StatusCode)
 }
