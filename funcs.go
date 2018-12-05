@@ -3,9 +3,9 @@ package ant
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -105,21 +105,25 @@ func RequestCertificate(url, home, id string, data []byte) error {
 
 	defer res.Body.Close()
 
-	if res.StatusCode == 200 {
-		b, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return err
-		}
-		block, _ := pem.Decode(b)
-		if block == nil {
-			return fmt.Errorf("failed to parse certificate PEM")
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return fmt.Errorf("failed to parse certificate: %v", err.Error())
-		}
-		fmt.Printf("cert = %s\n", cert)
-		// TODO
+	b, err := ioutil.ReadAll(io.LimitReader(res.Body, 4096))
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("error while requesting the certificate: %v", res.StatusCode)
+
+	if res.StatusCode != 200 {
+		return fmt.Errorf("%s", b)
+	}
+
+	block, _ := pem.Decode(b)
+	if block == nil {
+		return fmt.Errorf("failed to parse certificate PEM")
+	}
+	//cert, err := x509.ParseCertificate(block.Bytes)
+	//if err != nil {
+	//return fmt.Errorf("failed to parse certificate: %v", err.Error())
+	//}
+	crt := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block.Bytes})
+
+	fmt.Printf("crt = %s\n", crt)
+	return nil
 }

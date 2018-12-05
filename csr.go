@@ -66,8 +66,7 @@ func createCertificate(cfg *Config) error {
 	}
 
 	return RequestCertificate(
-		//	fmt.Sprintf("https://%s:%d", cfg.Marabunta, cfg.HTTPPort),
-		fmt.Sprintf("https://%s:%d/register", "localhost", cfg.HTTPPort),
+		fmt.Sprintf("https://%s:%d/register", cfg.Marabunta, cfg.HTTPPort),
 		cfg.Home,
 		id,
 		csr)
