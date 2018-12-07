@@ -2,8 +2,11 @@ package ant
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 // Client marabunta (ant)
 type Client struct {
 	client pb.MarabuntaClient
+	config *Config
 	ctx    context.Context
 }
 
@@ -28,24 +32,42 @@ func New(c *Config) (*Client, error) {
 		"ant", "foo",
 	)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	return &Client{ctx: ctx}, nil
+	return &Client{
+		config: c,
+		ctx:    ctx,
+	}, nil
 }
 
+// Run Start
 func (c *Client) Start() error {
-	return nil
-}
+	certificate, err := tls.LoadX509KeyPair(
+		c.config.TLS.Crt,
+		c.config.TLS.Key,
+	)
 
-// Run ant
-func (c *Client) Run(cert string) error {
-	creds, err := credentials.NewClientTLSFromFile("server.crt", "")
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile(c.config.TLS.CA)
 	if err != nil {
-		log.Fatalf("could not load tls cert: %s", err)
+		return err
 	}
+
+	ok := certPool.AppendCertsFromPEM(ca)
+	if !ok {
+		log.Fatal("failed to append certs")
+	}
+
+	transportCreds := credentials.NewTLS(&tls.Config{
+		ServerName:   "marabunta",
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      certPool,
+	})
+
 	// wait for 5 seconds
-	connCtx, cancel := context.WithTimeout(c.ctx, time.Second)
+	connCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(connCtx, "localhost:1415",
-		grpc.WithTransportCredentials(creds),
+	conn, err := grpc.DialContext(connCtx,
+		fmt.Sprintf("%s:%d", c.config.Marabunta, c.config.GRPCPort),
+		grpc.WithTransportCredentials(transportCreds),
 		grpc.WithBlock(),
 	)
 	if err != nil {
