@@ -14,6 +14,20 @@ import (
 )
 
 func createCertificate(cfg *Config) error {
+	var do bool
+	if !isFile(cfg.TLS.CA) {
+		do = true
+	}
+	if !isFile(cfg.TLS.Crt) {
+		do = true
+	}
+	if !isFile(cfg.TLS.Key) {
+		do = true
+	}
+	if !do {
+		return nil
+	}
+
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return err
