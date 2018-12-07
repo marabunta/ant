@@ -3,6 +3,7 @@ package ant
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -111,19 +112,41 @@ func RequestCertificate(url, home, id string, data []byte) error {
 	}
 
 	if res.StatusCode != 200 {
-		return fmt.Errorf("%s", b)
+		return fmt.Errorf("%d - %s", res.StatusCode, b)
 	}
 
-	block, _ := pem.Decode(b)
-	if block == nil {
-		return fmt.Errorf("failed to parse certificate PEM")
+	var blocks []byte
+	for {
+		var block *pem.Block
+		block, b = pem.Decode(b)
+		if block == nil {
+			return fmt.Errorf("failed to parse certificate PEM")
+		}
+		blocks = append(blocks, block.Bytes...)
+		if len(b) == 0 {
+			break
+		}
 	}
-	//cert, err := x509.ParseCertificate(block.Bytes)
-	//if err != nil {
-	//return fmt.Errorf("failed to parse certificate: %v", err.Error())
-	//}
-	crt := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block.Bytes})
 
-	fmt.Printf("crt = %s\n", crt)
+	certs, err := x509.ParseCertificates(blocks)
+	if err != nil {
+		return err
+	}
+
+	for _, cert := range certs {
+		block := &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
+		if bytes.Compare(cert.RawIssuer, cert.RawSubject) == 0 && cert.IsCA {
+			err := ioutil.WriteFile(filepath.Join(home, "CA.crt"), pem.EncodeToMemory(block), 0644)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := ioutil.WriteFile(filepath.Join(home, "ant.crt"), pem.EncodeToMemory(block), 0644)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }

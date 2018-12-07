@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/go-yaml/yaml"
 )
@@ -115,6 +116,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, fmt.Errorf("cannot read TLS CA file: %q, use (\"%s -h\") for help", cfg.TLS.CA, os.Args[0])
 			}
 		} else {
+			cfg.TLS.CA = filepath.Join(cfg.Home, "CA.crt")
 			needCertificate = true
 		}
 
@@ -124,6 +126,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, fmt.Errorf("cannot read TLS crt file: %q, use (\"%s -h\") for help", cfg.TLS.Crt, os.Args[0])
 			}
 		} else {
+			cfg.TLS.Crt = filepath.Join(cfg.Home, "ant.crt")
 			needCertificate = true
 		}
 
@@ -133,6 +136,7 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, fmt.Errorf("cannot read TLS Key file: %q, use (\"%s -h\") for help", cfg.TLS.Key, os.Args[0])
 			}
 		} else {
+			cfg.TLS.Key = filepath.Join(cfg.Home, "ant.key")
 			needCertificate = true
 		}
 
@@ -153,8 +157,23 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 
 	cfg.Home = home
 
-	if err := createCertificate(cfg); err != nil {
-		return nil, err
+	cfg.TLS.CA = filepath.Join(cfg.Home, "CA.crt")
+	if !isFile(cfg.TLS.CA) {
+		needCertificate = true
+	}
+	cfg.TLS.Crt = filepath.Join(cfg.Home, "ant.crt")
+	if !isFile(cfg.TLS.Crt) {
+		needCertificate = true
+	}
+	cfg.TLS.Key = filepath.Join(cfg.Home, "ant.key")
+	if !isFile(cfg.TLS.Key) {
+		needCertificate = true
+	}
+
+	if needCertificate {
+		if err := createCertificate(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	return cfg, nil

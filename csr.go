@@ -16,7 +16,7 @@ import (
 func createCertificate(cfg *Config) error {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	id, err := GetID(filepath.Join(cfg.Home, "ant.id"))
@@ -26,9 +26,6 @@ func createCertificate(cfg *Config) error {
 
 	subj := pkix.Name{
 		CommonName:         id,
-		Country:            []string{"-"},
-		Province:           []string{"-"},
-		Locality:           []string{"-"},
 		Organization:       []string{"marabunta"},
 		OrganizationalUnit: []string{"ant"},
 	}
@@ -51,7 +48,7 @@ func createCertificate(cfg *Config) error {
 	x509Encoded, _ := x509.MarshalECPrivateKey(key)
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509Encoded})
 
-	err = ioutil.WriteFile(filepath.Join(cfg.Home, "ant.key"), pemEncoded, 0600)
+	err = ioutil.WriteFile(cfg.TLS.Key, pemEncoded, 0600)
 	if err != nil {
 		return err
 	}
