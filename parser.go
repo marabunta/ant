@@ -86,6 +86,9 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 			Marabunta: "marabunta.host",
 			HTTPPort:  8000,
 			GRPCPort:  1415,
+			TLS: TLS{
+				ServerName: "marabunta",
+			},
 		}
 	)
 
@@ -108,16 +111,6 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 				return nil, err
 			}
 			cfg.Home = home
-		}
-
-		// TLS CA
-		if cfg.TLS.CA != "" {
-			if !isFile(cfg.TLS.CA) {
-				return nil, fmt.Errorf("cannot read TLS CA file: %q, use (\"%s -h\") for help", cfg.TLS.CA, os.Args[0])
-			}
-		} else {
-			cfg.TLS.CA = filepath.Join(cfg.Home, "CA.crt")
-			needCertificate = true
 		}
 
 		// TLS certificate
@@ -157,10 +150,6 @@ func (p *Parse) ParseArgs(fs *flag.FlagSet) (*Config, error) {
 
 	cfg.Home = home
 
-	cfg.TLS.CA = filepath.Join(cfg.Home, "CA.crt")
-	if !isFile(cfg.TLS.CA) {
-		needCertificate = true
-	}
 	cfg.TLS.Crt = filepath.Join(cfg.Home, "ant.crt")
 	if !isFile(cfg.TLS.Crt) {
 		needCertificate = true

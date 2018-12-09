@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"time"
 
@@ -40,27 +39,28 @@ func New(c *Config) (*Client, error) {
 
 // Run Start
 func (c *Client) Start() error {
-	certificate, err := tls.LoadX509KeyPair(
-		c.config.TLS.Crt,
-		c.config.TLS.Key,
-	)
-
-	certPool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile(c.config.TLS.CA)
+	cert, err := tls.LoadX509KeyPair(c.config.TLS.Crt, c.config.TLS.Key)
 	if err != nil {
 		return err
 	}
 
-	ok := certPool.AppendCertsFromPEM(ca)
-	if !ok {
-		log.Fatal("failed to append certs")
+	if len(cert.Certificate) < 2 {
+		return fmt.Errorf("%q should have concatenaed certificates: cert + CA", c.config.TLS.Crt)
 	}
 
-	transportCreds := credentials.NewTLS(&tls.Config{
-		ServerName:   "marabunta",
-		Certificates: []tls.Certificate{certificate},
+	ca, err := x509.ParseCertificate(cert.Certificate[len(cert.Certificate)-1])
+	if err != nil {
+		return err
+	}
+
+	certPool := x509.NewCertPool()
+	certPool.AddCert(ca)
+	tlsConfig := &tls.Config{
+		ServerName:   c.config.TLS.ServerName,
+		Certificates: []tls.Certificate{cert},
 		RootCAs:      certPool,
-	})
+	}
+	transportCreds := credentials.NewTLS(tlsConfig)
 
 	// wait for 5 seconds
 	connCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)

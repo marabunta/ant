@@ -5,4 +5,4 @@ marabunta_grpc_port: 1415
 tls:
   crt: certs/server.crt
   key: certs/server.key
-  ca: certs/CA.crt
+  server_name: marabunta.tld

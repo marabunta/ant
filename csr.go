@@ -15,9 +15,6 @@ import (
 
 func createCertificate(cfg *Config) error {
 	var do bool
-	if !isFile(cfg.TLS.CA) {
-		do = true
-	}
 	if !isFile(cfg.TLS.Crt) {
 		do = true
 	}

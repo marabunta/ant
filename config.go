@@ -11,7 +11,7 @@ type Config struct {
 
 // TLS configuration options
 type TLS struct {
-	Crt string `yaml:"crt"`
-	Key string `yaml:"key"`
-	CA  string `yaml:"ca"`
+	Crt        string `yaml:"crt"`
+	Key        string `yaml:"key"`
+	ServerName string `yaml:"server_name"`
 }

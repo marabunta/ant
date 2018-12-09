@@ -133,20 +133,30 @@ func RequestCertificate(url, home, id string, data []byte) error {
 		return err
 	}
 
-	for _, cert := range certs {
+	if len(certs) < 2 {
+		return fmt.Errorf("crt must have 2 concatenated certificates: client + CA")
+	}
+
+	// use the CA always as the last certificate
+	// need to test for intermediate  certificates
+	out := make([]*pem.Block, len(certs))
+	for k, cert := range certs {
 		block := &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
 		if bytes.Compare(cert.RawIssuer, cert.RawSubject) == 0 && cert.IsCA {
-			err := ioutil.WriteFile(filepath.Join(home, "CA.crt"), pem.EncodeToMemory(block), 0644)
-			if err != nil {
-				return err
-			}
+			out[len(certs)-1] = block
 		} else {
-			err := ioutil.WriteFile(filepath.Join(home, "ant.crt"), pem.EncodeToMemory(block), 0644)
-			if err != nil {
-				return err
-			}
+			out[k] = block
 		}
 	}
 
-	return nil
+	file, err := os.OpenFile(filepath.Join(home, "ant.crt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range out {
+		pem.Encode(file, c)
+	}
+
+	return file.Close()
 }
